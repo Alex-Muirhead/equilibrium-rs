@@ -1,26 +1,28 @@
 use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
+use std::io::Read;
 
-fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename)?;
-    Ok(io::BufReader::new(file).lines())
-}
+mod database;
 
 fn main() {
-    let Ok(lines) = read_lines("./thermo.inp") else {
-        eprintln!("Could not open file");
-        return;
+    let mut file = match File::open("./thermo-snippet.inp") {
+        Ok(file) => file,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
+        }
     };
 
-    for line in lines.map_while(Result::ok) {
-        // Skip comment lines
-        if line.starts_with("!") {
-            continue;
+    let mut raw_text = String::new();
+    file.read_to_string(&mut raw_text)
+        .expect("Could not read file.");
+
+    let thermo_db = match database::parse_thermo_file(&raw_text) {
+        Ok(db) => db,
+        Err(e) => {
+            eprintln!("{}", e);
+            return;
         }
-        println!("{line}");
-    }
+    };
+
+    println!("Success!\n{:?}", thermo_db);
 }
